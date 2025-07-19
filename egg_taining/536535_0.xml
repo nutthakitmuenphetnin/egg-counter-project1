@@ -1,0 +1,26 @@
+<annotation>
+	<folder>egg</folder>
+	<filename>536535_0.jpg</filename>
+	<path>C:\Users\USER\Desktop\egg_counter_project\egg\536535_0.jpg</path>
+	<source>
+		<database>Unknown</database>
+	</source>
+	<size>
+		<width>1084</width>
+		<height>1509</height>
+		<depth>3</depth>
+	</size>
+	<segmented>0</segmented>
+	<object>
+		<name>egg1</name>
+		<pose>Unspecified</pose>
+		<truncated>0</truncated>
+		<difficult>0</difficult>
+		<bndbox>
+			<xmin>408</xmin>
+			<ymin>751</ymin>
+			<xmax>574</xmax>
+			<ymax>935</ymax>
+		</bndbox>
+	</object>
+</annotation>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Egg Counter Dashboard</title>
+  <style>
+    body { background: black; color: red; font-family: 'Arial'; text-align: center; }
+    .count-box { background: #c69c2c; padding: 10px 30px; margin: 10px; display: inline-block; font-size: 30px; }
+    .desc { background: #ccc; color: black; padding: 10px 20px; margin: 10px; display: inline-block; font-weight: bold; }
+    #image-box { margin: 20px auto; width: 400px; height: 300px; background: white; color: red; font-size: 24px; line-height: 300px; }
+    button { font-size: 24px; background: #c69c2c; border: none; padding: 10px 30px; margin: 10px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>ข้อมูลการนับจำนวนไข่ไก่/วัน</h1>
+
+  <div>
+    <div class="desc">จำนวนไข่ไก่นับได้/ครั้ง</div>
+    <div class="count-box" id="count_per_time">0</div>
+    <div class="desc">จำนวนไข่ไก่นับได้/วัน</div>
+    <div class="count-box" id="count_per_day">0</div>
+  </div>
+
+  <div id="image-box">ให้แสดงรูปภาพที่นับไข่ไก่ได้ในแต่ละครั้ง</div>
+
+  <button id="btn-download-csv">ดาวน์โหลดไฟล์ CSV ล่าสุด</button>
+
+  <script>
+    const backendBaseURL = 'https://egg-counter-project.onrender.com'; // เปลี่ยนเป็น URL backend จริงของคุณ
+
+    async function loadData() {
+      try {
+        const res = await fetch(`${backendBaseURL}/data`);
+        const json = await res.json();
+
+        // แสดงข้อมูลนับไข่
+        let totalCount = 0;
+        let countPerDay = 0;
+        if(json.csv_data && json.csv_data.data.length > 0){
+          totalCount = json.csv_data.data.reduce((acc,row) => acc + Number(row[2] || 0), 0);
+          countPerDay = json.csv_data.data.reduce((acc,row) => acc + Number(row[1] || 0), 0);
+        }
+        document.getElementById('count_per_time').textContent = totalCount;
+        document.getElementById('count_per_day').textContent = countPerDay;
+
+        // แสดงรูปภาพล่าสุด
+        if(json.latest_image){
+          document.getElementById('image-box').innerHTML = `<img src="${backendBaseURL}/images/${json.latest_image}" width="400" />`;
+        } else {
+          document.getElementById('image-box').textContent = "ไม่มีรูปภาพแสดง";
+        }
+      } catch (error) {
+        console.error('Error loading data:', error);
+        document.getElementById('image-box').textContent = "เกิดข้อผิดพลาดในการโหลดข้อมูล";
+      }
+    }
+
+    loadData();
+
+    document.getElementById('btn-download-csv').addEventListener('click', () => {
+      window.location.href = `${backendBaseURL}/download_csv`;
+    });
+
+    // รีเฟรชข้อมูลทุก 10 วินาที
+    setInterval(loadData, 10000);
+  </script>
+</body>
+</html>
