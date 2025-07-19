@@ -1,66 +1,53 @@
-from flask import Flask, jsonify, send_from_directory, request, send_file
+from flask import Flask, send_from_directory, jsonify
 import os
-import glob
 import csv
-import datetime
+from datetime import datetime
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="frontend", static_url_path='')
 
-BASE_DIR = os.path.join(os.path.expanduser("~"), "Desktop", "egg_counter_project")
-CSV_DIR = os.path.join(BASE_DIR, "logs", "device01", "csv")
-IMG_DIR = os.path.join(BASE_DIR, "logs", "device01", "images")
-FRONTEND_DIR = os.path.join(BASE_DIR, "frontend")
+# 1. Serve HTML หน้าแรก
+@app.route('/')
+def serve_index():
+    return send_from_directory(app.static_folder, 'index.html')
 
-def get_latest_csv():
-    csv_files = glob.glob(os.path.join(CSV_DIR, "*.csv"))
+# 2. API: ส่งข้อมูล CSV + ชื่อไฟล์ล่าสุด + ชื่อรูปภาพล่าสุด
+@app.route('/data')
+def send_data():
+    logs_folder = 'logs/device01'
+    csv_files = [f for f in os.listdir(logs_folder) if f.endswith('.csv')]
+    image_files = [f for f in os.listdir(logs_folder) if f.endswith('.png')]
+
     if not csv_files:
-        return {}
-    latest_csv = max(csv_files, key=os.path.getmtime)
+        return jsonify({"error": "No CSV files found"}), 404
+
+    latest_csv = sorted(csv_files)[-1]
+    latest_csv_path = os.path.join(logs_folder, latest_csv)
+
+    # อ่านข้อมูล CSV
     data = []
-    with open(latest_csv, newline='', encoding='utf-8') as f:
-        reader = csv.reader(f)
+    with open(latest_csv_path, newline='', encoding='utf-8') as csvfile:
+        reader = csv.reader(csvfile)
+        next(reader, None)  # ข้าม header ถ้ามี
         for row in reader:
             data.append(row)
-    return {
-        "filename": os.path.basename(latest_csv),
-        "data": data
-    }
 
-def get_latest_image():
-    img_files = glob.glob(os.path.join(IMG_DIR, "*.png"))
-    if not img_files:
-        return None
-    latest_img = max(img_files, key=os.path.getmtime)
-    return os.path.basename(latest_img)
+    # หาไฟล์รูปภาพล่าสุด (ตาม timestamp filename)
+    latest_image = sorted(image_files)[-1] if image_files else None
 
-@app.route('/')
-def index():
-    return send_from_directory(FRONTEND_DIR, 'index.html')
-
-@app.route('/data')
-def data():
-    csv_data = get_latest_csv()
-    latest_img = get_latest_image()
     return jsonify({
-        "csv_data": csv_data,
-        "latest_image": latest_img
+        "csv_data": {
+            "filename": latest_csv,
+            "data": data
+        },
+        "latest_image": latest_image
     })
 
-@app.route('/images/<filename>')
-def images(filename):
-    return send_from_directory(IMG_DIR, filename)
+# 3. Serve รูปภาพจาก logs/device01
+@app.route('/logs/device01/<path:filename>')
+def serve_logs_file(filename):
+    return send_from_directory('logs/device01', filename)
 
-# เปลี่ยน /save_csv เป็น /download_csv ให้ดาวน์โหลดไฟล์ CSV ล่าสุด
-@app.route('/download_csv', methods=['GET'])
-def download_csv():
-    csv_files = glob.glob(os.path.join(CSV_DIR, "*.csv"))
-    if not csv_files:
-        return jsonify({"status": "error", "message": "No CSV files found"}), 400
-    latest_csv = max(csv_files, key=os.path.getmtime)
-    return send_file(latest_csv, as_attachment=True)
-
+# 4. รัน Flask App
 if __name__ == '__main__':
-    import os
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(debug=True)
 
