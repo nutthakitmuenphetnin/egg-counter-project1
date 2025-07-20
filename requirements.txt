@@ -1,7 +1,2 @@
 Flask
 flask_cors
-ultralytics
-opencv-python
-filterpy
-scipy
-numpy
