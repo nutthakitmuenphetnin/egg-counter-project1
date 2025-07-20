@@ -5,9 +5,9 @@
   <title>Egg Counter Dashboard</title>
   <style>
     body {
-      background: black;
-      color: red;
-      font-family: 'Arial', sans-serif;
+      background-color: black;
+      color: white;
+      font-family: 'Tahoma', sans-serif;
       text-align: center;
     }
     h1 {
@@ -15,35 +15,32 @@
       margin-top: 20px;
     }
     .count-box {
-      background: #c69c2c;
-      padding: 10px 30px;
-      margin: 10px;
       display: inline-block;
-      font-size: 30px;
+      background-color: goldenrod;
+      color: red;
+      font-size: 32px;
+      font-weight: bold;
+      width: 80px;
+      margin: 10px;
+      padding: 10px;
     }
-    .desc {
-      background: #ccc;
-      color: black;
-      padding: 10px 20px;
-      margin: 10px;
-      display: inline-block;
+    .label {
+      color: white;
       font-weight: bold;
     }
-    #image-box {
-      margin: 20px auto;
-      width: 400px;
-      height: 300px;
-      background: white;
-      color: red;
-      font-size: 24px;
-      line-height: 300px;
+    img {
+      max-width: 100%;
+      height: auto;
+      margin-top: 20px;
+      border: 4px solid white;
     }
-    button {
-      font-size: 24px;
-      background: #c69c2c;
+    .download-btn {
+      margin-top: 20px;
+      padding: 15px 30px;
+      font-size: 18px;
+      background-color: goldenrod;
+      color: black;
       border: none;
-      padding: 10px 30px;
-      margin: 10px;
       cursor: pointer;
     }
   </style>
@@ -52,57 +49,63 @@
   <h1>ข้อมูลการนับจำนวนไข่ไก่/วัน</h1>
 
   <div>
-    <div class="desc">จำนวนไข่ไก่นับได้/ครั้ง</div>
-    <div class="count-box" id="count_per_time">0</div>
-    <div class="desc">จำนวนไข่ไก่นับได้/วัน</div>
-    <div class="count-box" id="count_per_day">0</div>
+    <div class="label">จำนวนไข่ไก่ที่นับได้/ครั้ง</div>
+    <div id="countSession" class="count-box">0</div>
+
+    <div class="label">จำนวนไข่ไก่ที่นับได้/วัน</div>
+    <div id="countDay" class="count-box">0</div>
   </div>
 
-  <div id="image-box">ไม่มีรูปภาพแสดง</div>
+  <div id="imageContainer">
+    <p style="color:red;">ไม่มีรูปภาพแสดง</p>
+  </div>
 
-  <button id="btn-download-csv">ดาวน์โหลดไฟล์ CSV ล่าสุด</button>
+  <button id="downloadBtn" class="download-btn">ดาวน์โหลดไฟล์ CSV ล่าสุด</button>
 
   <script>
-    const backendBaseURL = 'https://egg-counter-project.onrender.com'; // เปลี่ยนตรงนี้ถ้า URL เปลี่ยน
-
-    async function loadData() {
+    async function fetchData() {
       try {
-        const res = await fetch(`${backendBaseURL}/data`);
-        const json = await res.json();
+        const response = await fetch('/data');
+        const data = await response.json();
 
-        // แสดงข้อมูลนับไข่
-        let totalCount = 0;
+        // ตรวจสอบว่าไม่มี error
+        if (data.error) {
+          console.error(data.error);
+          return;
+        }
+
+        const csvData = data.csv_data.data;
+        let countPerSession = 0;
         let countPerDay = 0;
 
-        if (json.csv_data && json.csv_data.data.length > 0) {
-          totalCount = json.csv_data.data.reduce((acc, row) => acc + Number(row[2] || 0), 0);
-          countPerDay = json.csv_data.data.reduce((acc, row) => acc + Number(row[1] || 0), 0);
+        csvData.forEach(row => {
+          countPerDay += parseInt(row[1]);      // คอลัมน์ 2 = ไข่/วัน
+          countPerSession += parseInt(row[2]);  // คอลัมน์ 3 = ไข่/ครั้ง
+        });
+
+        document.getElementById('countSession').textContent = countPerSession;
+        document.getElementById('countDay').textContent = countPerDay;
+
+        // แสดงรูปภาพ
+        const imageContainer = document.getElementById('imageContainer');
+        if (data.latest_image) {
+          const img = document.createElement('img');
+          img.src = `/logs/device01/images/${data.latest_image}`;
+          imageContainer.innerHTML = '';
+          imageContainer.appendChild(img);
         }
 
-        document.getElementById('count_per_time').textContent = totalCount;
-        document.getElementById('count_per_day').textContent = countPerDay;
+        // ปุ่มดาวน์โหลด
+        document.getElementById('downloadBtn').onclick = () => {
+          window.location.href = `/logs/device01/csv/${data.csv_data.filename}`;
+        };
 
-        // แสดงรูปภาพล่าสุด
-        if (json.latest_image) {
-          document.getElementById('image-box').innerHTML = `<img src="${backendBaseURL}/images/${json.latest_image}" width="400" />`;
-        } else {
-          document.getElementById('image-box').textContent = "ไม่มีรูปภาพแสดง";
-        }
-
-      } catch (error) {
-        console.error('Error loading data:', error);
-        document.getElementById('image-box').textContent = "เกิดข้อผิดพลาดในการโหลดข้อมูล";
+      } catch (err) {
+        console.error('Error fetching data:', err);
       }
     }
 
-    loadData();
-
-    document.getElementById('btn-download-csv').addEventListener('click', () => {
-      window.location.href = `${backendBaseURL}/download_csv`;
-    });
-
-    // รีเฟรชข้อมูลทุก 2 วินาที
-    setInterval(loadData, 2000);
+    fetchData();
   </script>
 </body>
 </html>
